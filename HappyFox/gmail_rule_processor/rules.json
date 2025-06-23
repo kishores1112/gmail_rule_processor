@@ -1,0 +1,54 @@
+{
+    "rules": [
+        {
+            "predicate": "Any",
+            "conditions": [
+                {
+                    "field": "From",
+                    "predicate": "Contains",
+                    "value": "example@example.com"
+                },
+                {
+                    "field": "Subject",
+                    "predicate": "Does not Contain",
+                    "value": "Spam"
+                },
+                {
+                    "field": "Received",
+                    "predicate": "Less than",
+                    "value": "30 days"
+                }
+            ],
+            "actions": [
+                {
+                    "action": "mark_read"
+                },
+                {
+                    "action": "move_message",
+                    "label": "Important",
+                    "folder": "happyfox"
+                }
+            ]
+        },
+        {
+            "predicate": "All",
+            "conditions": [
+                {
+                    "field": "Message",
+                    "predicate": "Contains",
+                    "value": "Thanks"
+                },
+                {
+                    "field": "Subject",
+                    "predicate": "Contains",
+                    "value": "Application"
+                }
+            ],
+            "actions": [
+                {
+                    "action": "mark_read"
+                }
+            ]
+        }
+    ]
+}
