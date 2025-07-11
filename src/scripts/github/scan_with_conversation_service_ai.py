@@ -56,7 +56,7 @@ payload = {
 
 headers = {"x-api-key": "dev-1356134h1fh134fhg134hg4h134hg134hg"}
 conversation_api_key = os.environ.get("CONVERSATION_API_KEY", "Unknown")
-headers = {"x-api-key": conversation_api_key}
+headers = {"x-api-key": "dev-6de44a2f86e5c7b8ff97e6f1ead92a9cdeb4cbc4fb64c1f2a39514551ff0c9af"}
 
 print("Response from the API:")
 response = requests.post(url=CONVERSATION_API_URL, json=payload, headers=headers)
