@@ -1,0 +1,84 @@
+name: Scan for secrets
+
+on:
+  pull_request:
+    paths:
+      - '**/*.py'
+      # - '**.env'
+      # - '**.yaml'
+      # - '**.yml'
+      # - '**.json'
+      # - '**.ini'
+      # - '**.cfg'
+
+jobs:
+  scan_secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create SSH key and known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "${SSH_KNOWN_HOSTS}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      - name: Write PR Diff to unique file
+        run: |
+          mkdir -p tmp
+          DIFF_FILE="tmp/diff_${{ github.run_id }}.txt"
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git diff origin/${{ github.event.pull_request.base.ref }}..HEAD > "$DIFF_FILE"
+          echo "DIFF_FILE=$DIFF_FILE" >> $GITHUB_ENV
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Scan diff with Conversation Service
+        id: scan
+        run: python src/scripts/github/scan_with_conversation_service_ai.py
+        env:
+          DIFF_FILE: ${{ env.DIFF_FILE }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          CONVERSATION_API_KEY: ${{ secrets.CONVERSATION_API_KEY }}
+
+      - name: Check scan status
+        id: check_status
+        run: |
+          STATUS_FILE="tmp/scan_status_${{ github.run_id }}.txt"
+          if grep -q "ACTION_REQUIRED" "$STATUS_FILE"; then
+            echo "action_required=true" >> $GITHUB_OUTPUT
+          else
+            echo "action_required=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload scan results
+        if: steps.check_status.outputs.action_required == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-results-${{ github.run_id }}
+          path: |
+            tmp/scan_response_${{ github.run_id }}.json
+            tmp/scan_message_${{ github.run_id }}.txt
+
+      - name: Require manual approval
+        if: steps.check_status.outputs.action_required == 'true'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.token }}
+          approvers: user1,user2
+          instructions: "Security vulnerabilities detected. Please review the attached scan results."
+
+      - name: Clean up
+        run: |
+          rm -f ~/.ssh/id_rsa
+          rm -f ~/.ssh/known_hosts
+          rm -f ${{ env.DIFF_FILE }}
+          rm -f tmp/scan_response_${{ github.run_id }}.json
+          rm -f tmp/scan_message_${{ github.run_id }}.txt
+          rm -f tmp/scan_status_${{ github.run_id }}.txt
