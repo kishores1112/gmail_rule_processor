@@ -1,6 +1,8 @@
 from db import init_db, insert_email
 from common import get_service
 
+DEMO = "dev-kjahsdiuewdiudebewbdiewbdiewbdewbdj"
+
 
 def fetch_and_store():
     """
